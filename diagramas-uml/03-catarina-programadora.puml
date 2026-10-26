@@ -1,0 +1,24 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase { BackgroundColor #EBF4FF; BorderColor #2A6BBA; FontColor #243042 }
+actor "Programadora\nCatarina Reis" as Ator
+rectangle "Sistema de Gestão de Funcionalidades" {
+  usecase "CR-01\nConsultar tarefas do Sprint Backlog" as UC1
+  usecase "CR-02\nConsultar descrição da tarefa" as UC2
+  usecase "CR-03\nConsultar requisitos e critérios de aceitação" as UC3
+  usecase "CR-04\nConsultar prioridade da tarefa" as UC4
+  usecase "CR-05\nAtualizar estado da tarefa" as UC5
+  usecase "CR-06\nMarcar tarefa como concluída" as UC6
+}
+Ator -- UC1
+Ator -- UC2
+Ator -- UC3
+Ator -- UC4
+Ator -- UC5
+UC6 --|> UC5
+note bottom
+CR-03 inclui critérios de aceitação referidos na persona. CR-06 é especialização de CR-05.
+end note
+@enduml

@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase { BackgroundColor #EBF4FF; BorderColor #2A6BBA; FontColor #243042 }
+actor "Cliente\nMariana Costa" as Ator
+rectangle "Sistema de Gestão de Funcionalidades" {
+  usecase "MC-01\nPesquisar pedidos semelhantes" as UC1
+  usecase "MC-02\nSubmeter pedido de funcionalidade" as UC2
+  usecase "MC-03\nConsultar estado do pedido" as UC3
+  usecase "MC-04\nConsultar respostas da equipa" as UC4
+}
+Ator -- UC1
+Ator -- UC2
+Ator -- UC3
+Ator -- UC4
+note bottom
+Cenário: a cliente pesquisa, submete e acompanha o pedido; agendar encomenda é apenas o exemplo de necessidade.
+end note
+@enduml

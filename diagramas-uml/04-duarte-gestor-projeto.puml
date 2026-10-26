@@ -1,0 +1,24 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase { BackgroundColor #EBF4FF; BorderColor #2A6BBA; FontColor #243042 }
+actor "Gestor de Projeto\nDuarte Fernandes" as Ator
+rectangle "Sistema de Gestão de Funcionalidades" {
+  usecase "DF-01\nConsultar dashboard do projeto" as UC1
+  usecase "DF-02\nConsultar trabalho por estado" as UC2
+  usecase "DF-03\nConsultar possíveis atrasos" as UC3
+  usecase "DF-04\nConsultar roadmap e prazos" as UC4
+  usecase "DF-05\nComparar planeado e concluído no mês" as UC5
+  usecase "DF-06\nAnalisar tendências de lead time e cycle time" as UC6
+}
+Ator -- UC1
+Ator -- UC2
+Ator -- UC3
+Ator -- UC4
+Ator -- UC5
+Ator -- UC6
+note bottom
+DF-05 e DF-06 são necessidades da persona, não ações explícitas do cenário.
+end note
+@enduml

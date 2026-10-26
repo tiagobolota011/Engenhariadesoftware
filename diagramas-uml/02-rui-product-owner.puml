@@ -1,0 +1,24 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase { BackgroundColor #EBF4FF; BorderColor #2A6BBA; FontColor #243042 }
+actor "Product Owner\nRui Almeida" as Ator
+rectangle "Sistema de Gestão de Funcionalidades" {
+  usecase "RA-01\nConsultar pedidos dos clientes" as UC1
+  usecase "RA-02\nConsultar votos dos utilizadores" as UC2
+  usecase "RA-03\nComparar impacto e esforço" as UC3
+  usecase "RA-04\nDefinir prioridades dos pedidos" as UC4
+  usecase "RA-05\nSelecionar pedidos para o Product Backlog" as UC5
+  usecase "RA-06\nConsultar backlog consolidado" as UC6
+}
+Ator -- UC1
+Ator -- UC2
+Ator -- UC3
+Ator -- UC4
+Ator -- UC5
+Ator -- UC6
+note bottom
+RA-03 é sustentado pela persona; RA-06 interpreta o objetivo de centralizar o Product Backlog. Não confundir com Sprint Backlog.
+end note
+@enduml
