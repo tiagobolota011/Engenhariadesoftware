@@ -1,0 +1,10 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #1f2933;
+  background: #f5f7fa;
+}
+body { margin: 0; }
+.app { max-width: 40rem; margin: 4rem auto; padding: 0 1rem; }
+.status { display: inline-block; padding: 0.5rem 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd2d9; background: #fff; }
+.status-ok { border-color: #2f855a; }
+.status-degraded, .status-unavailable { border-color: #c53030; }
