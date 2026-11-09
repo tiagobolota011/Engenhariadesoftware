@@ -16,4 +16,10 @@ def check_db() -> bool:
             return cursor.fetchone() == (1,)
     except DatabaseError:
         logger.warning("database check failed", exc_info=True)
+        # Descarta a ligação partida para que a próxima verificação volte a ligar
+        # (o worker corre fora do ciclo de pedidos, onde o Django não o faz sozinho).
+        try:
+            connection.close()
+        except DatabaseError:
+            pass
         return False

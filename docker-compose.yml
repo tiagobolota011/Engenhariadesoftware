@@ -23,7 +23,7 @@ services:
       DATABASE_URL: postgres://featurehub:featurehub@db:5432/featurehub
       DJANGO_SECRET_KEY: change-me
       DJANGO_DEBUG: "1"
-      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,api"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
       WORKER_INTERVAL_SECONDS: "10"
     ports:
       - "8000:8000"
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
 
   web:
-    image: node:20-alpine
+    image: node:22-alpine
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     environment:
