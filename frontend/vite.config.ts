@@ -9,7 +9,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': { target: apiTarget, changeOrigin: true },
+      // Sem changeOrigin: o Host mantém-se igual ao Origin do navegador, como exige o CSRF do Django.
+      '/api': { target: apiTarget },
     },
   },
   test: {

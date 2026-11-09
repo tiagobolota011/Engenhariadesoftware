@@ -16,7 +16,7 @@ Arquitetura: **monólito modular** com frontend React, API Django REST Framework
 ## Versões
 
 - Python 3.12+ com [uv](https://docs.astral.sh/uv/)
-- Node.js 20+ e npm
+- Node.js 22.22+ e npm (o jsdom usado nos testes exige Node 22)
 - PostgreSQL 16
 - Django 5.2, Django REST Framework 3.16, React 19, Vite 6
 
