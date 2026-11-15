@@ -3,6 +3,7 @@
 | Ferramenta | Usada por | Finalidade |
 | --- | --- | --- |
 | Claude Code (Anthropic) | João Estêvão | Gerar a estrutura da base executável (SCRUM-68): projeto Django e apps por módulo, endpoint de saúde, worker, frontend React, testes, pipeline de CI, docker-compose e este README. |
+| Claude Code (Anthropic) | João Estêvão | Apoiar a implementação do fluxo principal (SCRUM-85): API de sessão, pedidos, votos, discussão, avaliação e priorização; ecrãs React WF-01 a WF-05; testes automáticos. |
 
 ## Como foi usada
 
