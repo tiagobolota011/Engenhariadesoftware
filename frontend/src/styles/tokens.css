@@ -1,0 +1,20 @@
+/* Medidas e tons tirados dos wireframes do Figma (WF-01 a WF-11, baixa fidelidade). */
+:root {
+  --font: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ink: #1f1f1f;
+  --ink-soft: #4d4d4d;
+  --ink-faint: #767676;
+  --line: #c9c9c9;
+  --line-soft: #e2e2e2;
+  --surface: #ffffff;
+  --surface-alt: #f3f3f3;
+  --surface-active: #dcdcdc;
+  --strong: #4a4a4a;
+  --success: #24f000;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --radius: 4px;
+  --sidebar: 220px;
+  --topbar: 65px;
+  --gutter: 32px;
+}
