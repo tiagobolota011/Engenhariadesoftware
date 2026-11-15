@@ -1,38 +1,59 @@
-import { useEffect, useState } from 'react'
-import { fetchHealth, type Health } from './api/health'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from './auth/AuthContext'
+import { AuthProvider } from './auth/AuthProvider'
+import AppShell from './layout/AppShell'
+import ComingSoon from './pages/ComingSoon'
+import Login from './pages/Login'
+import MyRequests from './pages/MyRequests'
+import Prioritization from './pages/Prioritization'
+import RequestDetail from './pages/RequestDetail'
+import RequestsList from './pages/RequestsList'
+import Status from './pages/Status'
+import SubmitRequest from './pages/SubmitRequest'
 
-type State = { kind: 'loading' } | { kind: 'ready'; health: Health } | { kind: 'unavailable' }
+const PLANNED = [
+  ['backlog', 'Backlog Management'],
+  ['user-stories', 'User Story Generator'],
+  ['traceability', 'Traceability'],
+  ['roadmap', 'Roadmap'],
+  ['dashboard', 'Analytics Dashboard'],
+  ['notifications', 'Notifications'],
+]
 
-function statusText(state: State): string {
-  switch (state.kind) {
-    case 'loading':
-      return 'A verificar…'
-    case 'unavailable':
-      return 'API indisponível'
-    case 'ready':
-      return `API: ${state.health.status} · DB: ${state.health.db}`
-  }
+function Screens() {
+  const { user } = useAuth()
+  if (!user) return <Login />
+  return (
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route path="/requests" element={<RequestsList />} />
+        <Route path="/requests/new" element={<SubmitRequest />} />
+        <Route path="/requests/:id" element={<RequestDetail />} />
+        <Route path="/my-requests" element={<MyRequests />} />
+        <Route path="/prioritization" element={<Prioritization />} />
+        {PLANNED.map(([path, title]) => (
+          <Route key={path} path={`/${path}`} element={<ComingSoon title={title} />} />
+        ))}
+        <Route path="*" element={<Navigate to="/requests" replace />} />
+      </Route>
+    </Routes>
+  )
 }
 
 export default function App() {
-  const [state, setState] = useState<State>({ kind: 'loading' })
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchHealth(controller.signal)
-      .then((health) => setState({ kind: 'ready', health }))
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ kind: 'unavailable' })
-      })
-    return () => controller.abort()
-  }, [])
-
   return (
-    <main className="app">
-      <h1>FeatureHub</h1>
-      <p className={`status status-${state.kind === 'ready' ? state.health.status : state.kind}`}>
-        {statusText(state)}
-      </p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/status" element={<Status />} />
+        <Route
+          path="*"
+          element={
+            <AuthProvider>
+              <Screens />
+            </AuthProvider>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   )
 }
