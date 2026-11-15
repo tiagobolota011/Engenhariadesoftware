@@ -89,7 +89,7 @@ Regras principais:
 - **Um voto por utilizador e pedido.**
 - **Estados:** Submitted → Under review → Approved ou Rejected → Planned → In progress → Released. Só o Product Owner muda o estado, um passo de cada vez.
 - **Score = votos × impacto ÷ esforço.** Sem estimativa, o pedido fica no fim da tabela.
-- **Histórico:** cada alteração do Product Owner cria uma versão. Uma escrita feita sobre uma versão antiga é recusada (HTTP 412) em vez de apagar o trabalho de outra pessoa.
+- **Histórico:** cada alteração do Product Owner cria uma versão. Os clientes veem só as mudanças de estado e de decisão; o impacto, o esforço e os motivos de prioridade ficam para a equipa. Uma escrita feita sobre uma versão antiga é recusada (HTTP 412) em vez de apagar o trabalho de outra pessoa.
 - **Isolamento:** cada utilizador só vê os dados do seu workspace.
 - **"AI Suggestion":** é uma ordem calculada pela própria aplicação com a regra do score, com a explicação de cada posição. Não liga a nenhum serviço externo de IA.
 
@@ -113,7 +113,7 @@ A password de desenvolvimento é `featurehub`. Para usar outra, define `SEED_PAS
 
 ### API
 
-Todas as rotas ficam em `/api/` e, tirando a de saúde e o login, exigem sessão iniciada.
+Todas as rotas ficam em `/api/`. Tirando a de saúde, a do token CSRF e o login, exigem sessão iniciada.
 
 | Rota | O que faz |
 | --- | --- |
@@ -126,9 +126,9 @@ Todas as rotas ficam em `/api/` e, tirando a de saúde e o login, exigem sessão
 | `GET /api/requests/{id}/` | Detalhe, com discussão e histórico |
 | `POST` / `DELETE /api/requests/{id}/vote/` | Vota ou retira o voto |
 | `POST /api/requests/{id}/comments/` | Comenta |
-| `POST /api/requests/{id}/comments/{cid}/decision/` | O Product Owner marca a decisão (uma por pedido) |
+| `POST` / `DELETE /api/requests/{id}/comments/{cid}/decision/` | O Product Owner marca ou retira a decisão; há uma por pedido, e marcar outro comentário move-a |
 | `PATCH /api/requests/{id}/assessment/` | O Product Owner define impacto, esforço e estado; leva a `version` que viu |
-| `GET /api/prioritization/`, `POST /api/prioritization/reorder/` | Tabela de priorização e ordem manual (Product Owner) |
+| `GET /api/prioritization/`, `POST /api/prioritization/reorder/` | Tabela de priorização e ordem manual: coloca um pedido antes de outro (`before`), com motivo (Product Owner) |
 | `GET /api/prioritization/suggestion/`, `POST /api/prioritization/suggestion/accept/` | Sugestão calculada (Product Owner) |
 | `GET /api/roadmap/public/` | Roadmap público: só título e categoria |
 

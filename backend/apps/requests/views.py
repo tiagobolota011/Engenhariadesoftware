@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.api import payload, text
 from apps.core.permissions import IsProductOwner
 from apps.prioritization.models import Assessment
 from apps.requests import serializers
@@ -39,12 +40,11 @@ class RequestListView(GenericAPIView):
     def get(self, request: Request) -> Response:
         params = request.query_params
         queryset = requests_for(request.user)
-        if search := params.get("search", "").strip():
-            queryset = queryset.filter(
-                Q(title__icontains=search)
-                | Q(description__icontains=search)
-                | Q(tags__name__icontains=search.lstrip("#"))
-            ).distinct()
+        if search := params.get("search", "").replace("\x00", "").strip():
+            match = Q(title__icontains=search) | Q(description__icontains=search)
+            if tag := search.lstrip("#"):
+                match |= Q(tags__name__icontains=tag)
+            queryset = queryset.filter(match).distinct()
         if (wanted := params.get("status")) in Status.values:
             queryset = queryset.filter(status=wanted)
         if (category := params.get("category", "")).isdigit():
@@ -60,9 +60,9 @@ class RequestListView(GenericAPIView):
         )
 
     def post(self, request: Request) -> Response:
-        data = request.data
-        title = str(data.get("title") or "").strip()
-        description = str(data.get("description") or "").strip()
+        data = payload(request)
+        title = text(data.get("title"))
+        description = text(data.get("description"))
         tags = data.get("tags") or []
         errors: dict[str, list[str]] = {}
         if not title:
@@ -92,7 +92,7 @@ class RequestListView(GenericAPIView):
             description=description,
             category=category,
             tags=tags,
-            importance=str(data.get("importance") or "").strip(),
+            importance=text(data.get("importance")),
         )
         return Response(
             serializers.detail(get_request(request.user, item.pk), request.user),
@@ -104,7 +104,8 @@ class SimilarRequestsView(APIView):
     """Pedidos parecidos com o título/tags que o cliente está a escrever (UC-01, passo 4)."""
 
     def get(self, request: Request) -> Response:
-        words = {w for w in request.query_params.get("q", "").lower().split() if len(w) >= 3}
+        query = request.query_params.get("q", "").replace("\x00", "")
+        words = {w for w in query.lower().split() if len(w) >= 3}
         tags = set(normalise_tags(request.query_params.get("tags", "").split(",")))
         if not words and not tags:
             return Response([])
@@ -134,14 +135,23 @@ class AssessmentView(APIView):
 
     @transaction.atomic
     def patch(self, request: Request, pk: int) -> Response:
+        data = payload(request)
         item = lock_request(request.user, pk)
-        data = request.data
-        errors: dict[str, list[str]] = {}
         version = _int(data.get("version"))
         if version is None:
-            errors["version"] = [REQUIRED]
+            return Response({"version": [REQUIRED]}, status=status.HTTP_400_BAD_REQUEST)
+        # Primeiro a versão: quem viu dados antigos recebe 412, e não um erro de
+        # validação calculado sobre um estado que nunca viu.
+        if version != item.version:
+            return Response(
+                {
+                    "detail": "This request was changed by someone else. Reload and try again.",
+                    "version": item.version,
+                },
+                status=status.HTTP_412_PRECONDITION_FAILED,
+            )
+        errors: dict[str, list[str]] = {}
         assessment, _ = Assessment.objects.get_or_create(request=item)
-        changes: list[str] = []
         estimate: list[str] = []
         for field, low, high, label in (
             ("impact", 1, 5, "impact {}"),
@@ -158,6 +168,7 @@ class AssessmentView(APIView):
             if value != getattr(assessment, field):
                 setattr(assessment, field, value)
                 estimate.append(label.format(value) if value is not None else f"{field} cleared")
+        status_change = ""
         new_status = data.get("status")
         if new_status not in (None, "", item.status):
             if new_status not in TRANSITIONS[item.status]:
@@ -167,26 +178,17 @@ class AssessmentView(APIView):
                 ]
             else:
                 item.status = new_status
-                changes.append(f"Status → {Status(new_status).label}")
+                status_change = f"Status → {Status(new_status).label}"
         if errors:
             transaction.set_rollback(True)
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-        if version != item.version:
-            transaction.set_rollback(True)
-            return Response(
-                {
-                    "detail": "This request was changed by someone else. Reload and try again.",
-                    "version": item.version,
-                },
-                status=status.HTTP_412_PRECONDITION_FAILED,
-            )
-        if estimate:
-            changes.append(", ".join(estimate))
+        changes = [part for part in (status_change, ", ".join(estimate)) if part]
         if changes:
             assessment.updated_by = request.user
             assessment.save()
             item.save(update_fields=["status", "updated_at"])
-            bump_version(item, request.user, "; ".join(changes))
+            # Os clientes só veem a mudança de estado; as estimativas são internas.
+            bump_version(item, request.user, "; ".join(changes), public=status_change)
         return Response(serializers.detail(get_request(request.user, pk), request.user))
 
 

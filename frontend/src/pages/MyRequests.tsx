@@ -16,12 +16,14 @@ export default function MyRequests() {
   const flash = (useLocation().state as { flash?: string } | null)?.flash
   const [items, setItems] = useState<RequestSummary[] | null>(null)
   const [roadmap, setRoadmap] = useState<PublicRoadmap | null>(null)
+  const [total, setTotal] = useState(0)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     Promise.all([listRequests({ mine: true }), publicRoadmap()])
       .then(([mine, columns]) => {
         setItems(mine.results)
+        setTotal(mine.count)
         setRoadmap(columns)
       })
       .catch(() => setFailed(true))
@@ -44,7 +46,7 @@ export default function MyRequests() {
       {items !== null && (
         <>
           <div className="tabs">
-            <span className="tab tab-active">My Requests ({items.length}) — created or voted</span>
+            <span className="tab tab-active">My Requests ({total}) — created or voted</span>
             <a className="tab" href="#public-roadmap">
               Public Roadmap
             </a>
@@ -84,6 +86,7 @@ export default function MyRequests() {
               </tbody>
             </table>
           )}
+          {total > items.length && <p className="list-count">Showing the {items.length} most voted of {total}.</p>}
         </>
       )}
 

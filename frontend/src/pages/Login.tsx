@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { messageOf } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 
 export default function Login() {
   const { signIn } = useAuth()
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -15,6 +17,8 @@ export default function Login() {
     setError('')
     try {
       await signIn(username.trim(), password)
+      // Começa sempre na lista, e não no ecrã onde a sessão anterior ficou.
+      navigate('/requests', { replace: true })
     } catch (caught) {
       setError(messageOf(caught, 'Could not sign in. Check that the API is running and try again.'))
       setBusy(false)

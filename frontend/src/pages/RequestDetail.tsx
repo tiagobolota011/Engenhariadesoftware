@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError, messageOf } from '../api/client'
-import { addComment, getRequest, markDecision, saveAssessment } from '../api/requests'
+import { addComment, getRequest, markDecision, removeDecision, saveAssessment } from '../api/requests'
 import type { RequestDetail as Detail, RequestStatus } from '../api/types'
 import Badge from '../components/Badge'
 import VoteButton from '../components/VoteButton'
@@ -67,7 +67,6 @@ export default function RequestDetail() {
   if (!item) return <p className="muted">Loading request…</p>
 
   const current = STEP_OF[item.status]
-  const hasDecision = item.comments.some((c) => c.is_decision)
 
   async function comment(event: FormEvent) {
     event.preventDefault()
@@ -75,18 +74,19 @@ export default function RequestDetail() {
     setCommentError('')
     try {
       const created = await addComment(item.id, text.trim())
-      setItem({ ...item, comments: [...item.comments, created] })
+      setItem((now) => (now ? { ...now, comments: [...now.comments, created] } : now))
       setText('')
     } catch {
       setCommentError('Your comment was not posted. Try again.')
     }
   }
 
-  async function decide(commentId: number) {
+  async function decide(commentId: number, marked: boolean) {
     if (!item) return
+    setSaved('')
     setSaveError('')
     try {
-      await markDecision(item.id, commentId)
+      await (marked ? markDecision : removeDecision)(item.id, commentId)
       await load()
     } catch (caught) {
       setSaveError(messageOf(caught, 'The decision could not be recorded. Try again.'))
@@ -112,8 +112,10 @@ export default function RequestDetail() {
       if (caught instanceof ApiError && caught.status === 400) {
         setSaveError(Object.values(caught.fieldErrors()).join(' ') || 'Check the values and try again.')
       } else {
-        // 412: outra pessoa alterou o pedido entretanto — nada foi escrito por cima.
         setSaveError(messageOf(caught, 'The assessment could not be saved. Try again.'))
+        // 412: outra pessoa alterou o pedido entretanto. Nada foi escrito por cima;
+        // mostra-se a versão atual para o PO a rever antes de guardar outra vez.
+        if (caught instanceof ApiError && caught.status === 412) await load()
       }
     }
   }
@@ -139,7 +141,7 @@ export default function RequestDetail() {
             · by {item.author_name} · {formatDate(item.created_at)}
           </p>
         </div>
-        <VoteButton id={item.id} title={item.title} votes={item.votes} voted={item.voted} layout="inline" onChange={(state) => setItem({ ...item, ...state })} />
+        <VoteButton id={item.id} title={item.title} votes={item.votes} voted={item.voted} layout="inline" onChange={(state) => setItem((now) => (now ? { ...now, ...state } : now))} />
       </div>
 
       <ol className="stepper" aria-label="Request status">
@@ -172,9 +174,9 @@ export default function RequestDetail() {
                     <strong>{c.author_name}</strong> · {c.author_role} · {formatDate(c.created_at)}
                   </span>
                   {c.is_decision && <Badge variant="success">✓ Decision</Badge>}
-                  {item.can_assess && !hasDecision && (
-                    <button type="button" className="link-button" onClick={() => decide(c.id)}>
-                      Mark as decision
+                  {item.can_assess && (
+                    <button type="button" className="link-button" onClick={() => decide(c.id, !c.is_decision)}>
+                      {c.is_decision ? 'Remove decision' : 'Mark as decision'}
                     </button>
                   )}
                 </div>

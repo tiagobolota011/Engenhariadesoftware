@@ -44,6 +44,55 @@ def test_stale_version_is_refused_with_412(login, po, make_request):
     assert api.get(f"/api/requests/{item.id}/").json()["assessment"]["impact"] == 4
 
 
+def test_stale_version_wins_over_other_errors(login, po, make_request):
+    item = make_request()
+    api = login(po)
+    assess(api, item, version=1, status="under_review")
+    # Quem vê uma versão antiga recebe 412, e não um erro calculado sobre dados que não viu.
+    assert assess(api, item, version=1, status="under_review").status_code == 412
+    assert assess(api, item, version=1, impact=9).status_code == 412
+
+
+def test_customer_history_hides_internal_assessment(login, customer, po, make_request):
+    item = make_request()
+    api = login(po)
+    assess(api, item, version=1, impact=5, effort=8, status="under_review")
+    assess(api, item, version=2, impact=4)
+    api.post(
+        "/api/prioritization/reorder/",
+        {"request": item.id, "before": None, "reason": "contract with Acme Lda"},
+        format="json",
+    )
+    raw = login(customer).get(f"/api/requests/{item.id}/")
+    for secret in ("impact", "effort", "Priority moved", "Acme Lda"):
+        assert secret not in raw.content.decode()
+    assert [v["summary"] for v in raw.json()["versions"]] == [
+        "Status → Under review",
+        "Request created",
+    ]
+    team = login(po).get(f"/api/requests/{item.id}/").json()["versions"]
+    assert team[0]["summary"] == "Priority moved manually: contract with Acme Lda"
+    assert len(team) == 4
+
+
+def test_malformed_input_is_a_400_not_a_crash(login, po, customer, category, make_request):
+    item = make_request()
+    api = login(po)
+    assert api.patch(f"/api/requests/{item.id}/assessment/", [1], format="json").status_code == 400
+    assert api.post("/api/requests/", [1], format="json").status_code == 400
+    assert api.post(f"/api/requests/{item.id}/comments/", [1], format="json").status_code == 400
+    assert api.post("/api/auth/login/", [1], format="json").status_code == 400
+    nul = api.post(f"/api/requests/{item.id}/comments/", {"body": "a\u0000b"}, format="json")
+    assert nul.status_code == 201 and nul.json()["body"] == "ab"
+    created = api.post(
+        "/api/requests/",
+        {"title": "T\u0000itle", "description": "d", "category": category.id, "tags": []},
+        format="json",
+    )
+    assert created.status_code == 201 and created.json()["title"] == "Title"
+    assert api.get("/api/requests/?search=%23").json()["count"] == 0
+
+
 def test_missing_version_and_bad_values(login, po, make_request):
     item = make_request()
     api = login(po)
@@ -114,18 +163,19 @@ def test_table_orders_by_score_with_missing_estimates_last(ranked):
     ]
 
 
-def test_manual_reorder_needs_reason_and_is_recorded(ranked):
-    api, a, b, c = ranked
-    no_reason = api.post(
-        "/api/prioritization/reorder/", {"request": b.id, "position": 0}, format="json"
-    )
-    assert no_reason.status_code == 400 and "reason" in no_reason.json()
-    done = api.post(
+def move(api, item, before, reason="contract commitment"):
+    return api.post(
         "/api/prioritization/reorder/",
-        {"request": b.id, "position": 0, "reason": "contract commitment"},
+        {"request": item.id, "before": before.id if before else None, "reason": reason},
         format="json",
     )
-    assert done.status_code == 200
+
+
+def test_manual_reorder_needs_reason_and_is_recorded(ranked):
+    api, a, b, c = ranked
+    no_reason = move(api, b, a, reason=" ")
+    assert no_reason.status_code == 400 and "reason" in no_reason.json()
+    assert move(api, b, a).status_code == 200
     table = rows(api)
     assert [r["title"] for r in table] == ["B", "A", "C"]
     assert (table[0]["manual"], table[0]["override_reason"]) == (True, "contract commitment")
@@ -133,13 +183,44 @@ def test_manual_reorder_needs_reason_and_is_recorded(ranked):
     assert history == "Priority moved manually: contract commitment"
 
 
+def test_every_move_takes_effect_even_over_another_manual_row(ranked):
+    api, a, b, c = ranked
+    move(api, b, a)  # B, A, C
+    assert move(api, a, b).status_code == 200  # A volta ao topo, por cima de B (manual)
+    assert [r["title"] for r in rows(api)] == ["A", "B", "C"]
+    move(api, c, a)
+    assert [r["title"] for r in rows(api)] == ["C", "A", "B"]
+    move(api, c, None)  # para o fim
+    assert [r["title"] for r in rows(api)] == ["A", "B", "C"]
+
+
+def test_move_inside_a_category_keeps_the_global_order_sane(ranked, workspace, make_request):
+    from apps.requests.models import Category
+
+    api, a, b, c = ranked
+    other = Category.objects.create(workspace=workspace, name="Interface")
+    d = make_request(title="D", category=other)
+    e = make_request(title="E", category=other)
+    # Na vista filtrada (D, E), o PO põe E antes de D: não pode saltar para o topo global.
+    assert move(api, e, d).status_code == 200
+    assert [r["title"] for r in rows(api, f"?category={other.id}")] == ["E", "D"]
+    assert [r["title"] for r in rows(api)] == ["A", "B", "C", "E", "D"]
+
+
+def test_reorder_rejects_bad_targets(ranked, login, po):
+    from apps.requests.models import FeatureRequest, Status
+
+    api, a, b, c = ranked
+    assert move(api, a, a).status_code == 400
+    FeatureRequest.objects.filter(pk=c.pk).update(status=Status.RELEASED)
+    assert move(api, c, a).status_code == 400
+    assert move(api, a, c).status_code == 400
+    assert api.post("/api/prioritization/reorder/", [1], format="json").status_code == 400
+
+
 def test_suggestion_explains_and_accept_clears_overrides(ranked):
     api, a, b, c = ranked
-    api.post(
-        "/api/prioritization/reorder/",
-        {"request": c.id, "position": 0, "reason": "CEO asked"},
-        format="json",
-    )
+    move(api, c, a, reason="CEO asked")
     suggestion = api.get("/api/prioritization/suggestion/").json()
     assert "No external AI service" in suggestion["basis"]
     assert [(i["title"], i["reason"]) for i in suggestion["items"]] == [
@@ -172,7 +253,7 @@ def test_reorder_rejects_request_from_other_workspace(login, outsider, make_requ
     item = make_request()
     response = login(outsider).post(
         "/api/prioritization/reorder/",
-        {"request": item.id, "position": 0, "reason": "x"},
+        {"request": item.id, "before": None, "reason": "x"},
         format="json",
     )
     assert response.status_code == 404

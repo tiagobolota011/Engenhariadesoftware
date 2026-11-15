@@ -35,10 +35,11 @@ def summary(item: FeatureRequest, user) -> dict:
 
 
 def comment(c) -> dict:
+    membership = getattr(c.author, "membership", None)
     return {
         "id": c.id,
         "author_name": display_name(c.author),
-        "author_role": c.author.membership.get_role_display(),
+        "author_role": membership.get_role_display() if membership else "Former member",
         "body": c.body,
         "is_decision": c.is_decision,
         "created_at": c.created_at.isoformat(),
@@ -48,6 +49,7 @@ def comment(c) -> dict:
 def detail(item: FeatureRequest, user) -> dict:
     role = user.membership.role
     is_po = role == Role.PRODUCT_OWNER
+    is_customer = role == Role.CUSTOMER
     assessment = assessment_of(item)
     data = summary(item, user)
     data.update(
@@ -65,14 +67,17 @@ def detail(item: FeatureRequest, user) -> dict:
                 {
                     "number": v.number,
                     "actor_name": display_name(v.actor),
-                    "summary": v.summary,
+                    "summary": v.public_summary if is_customer else v.summary,
                     "created_at": v.created_at.isoformat(),
                 }
                 for v in item.versions.select_related("actor")
+                # Impacto, esforço e motivos de prioridade são internos: o cliente só vê
+                # as alterações com resumo público.
+                if v.public_summary or not is_customer
             ],
             # A avaliação é interna à equipa: os clientes não a veem.
             "assessment": None
-            if role == Role.CUSTOMER
+            if is_customer
             else {
                 "impact": assessment.impact if assessment else None,
                 "effort": assessment.effort if assessment else None,

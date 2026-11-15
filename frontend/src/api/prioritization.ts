@@ -12,8 +12,9 @@ export const getSuggestion = (category = '') =>
 export const acceptSuggestion = (category = '') =>
   api<void>(`/api/prioritization/suggestion/accept/${query(category)}`, { method: 'POST' })
 
-export const reorder = (request: number, position: number, reason: string) =>
+/** Coloca o pedido imediatamente antes de `before`; `null` = no fim da tabela. */
+export const reorder = (request: number, before: number | null, reason: string) =>
   api<{ id: number; position: number }>('/api/prioritization/reorder/', {
     method: 'POST',
-    body: { request, position, reason },
+    body: { request, before, reason },
   })

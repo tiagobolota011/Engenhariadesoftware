@@ -17,7 +17,7 @@ export default function Prioritization() {
   const [rows, setRows] = useState<PriorityRow[] | null>(null)
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
   const [showSuggestion, setShowSuggestion] = useState(true)
-  const [moving, setMoving] = useState<{ row: PriorityRow; position: number } | null>(null)
+  const [moving, setMoving] = useState<{ row: PriorityRow; before: number | null; direction: 'up' | 'down' } | null>(null)
   const [reason, setReason] = useState('')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -27,6 +27,7 @@ export default function Prioritization() {
       const [table, suggested] = await Promise.all([listPriorities(category), getSuggestion(category)])
       setRows(table)
       setSuggestion(suggested)
+      setError('')
     } catch (caught) {
       setError(messageOf(caught, 'The prioritisation table could not be loaded. Reload the page.'))
     }
@@ -40,6 +41,9 @@ export default function Prioritization() {
   }, [allowed])
 
   useEffect(() => {
+    // Ao mudar de categoria, um movimento a meio deixa de fazer sentido.
+    setMoving(null)
+    setNotice('')
     if (allowed) void load()
   }, [allowed, load])
 
@@ -51,7 +55,7 @@ export default function Prioritization() {
     setError('')
     setNotice('')
     try {
-      await reorder(moving.row.id, moving.position, reason.trim())
+      await reorder(moving.row.id, moving.before, reason.trim())
       setMoving(null)
       setReason('')
       await load()
@@ -119,10 +123,10 @@ export default function Prioritization() {
                 {rows.map((row, index) => (
                   <tr key={row.id} className={row.manual ? 'row-manual' : undefined}>
                     <td className="reorder">
-                      <button type="button" className="icon-button" aria-label={`Move ${row.title} up`} disabled={index === 0} onClick={() => setMoving({ row, position: index - 1 })}>
+                      <button type="button" className="icon-button" aria-label={`Move ${row.title} up`} disabled={index === 0} onClick={() => setMoving({ row, before: rows[index - 1].id, direction: 'up' })}>
                         ▲
                       </button>
-                      <button type="button" className="icon-button" aria-label={`Move ${row.title} down`} disabled={index === rows.length - 1} onClick={() => setMoving({ row, position: index + 1 })}>
+                      <button type="button" className="icon-button" aria-label={`Move ${row.title} down`} disabled={index === rows.length - 1} onClick={() => setMoving({ row, before: rows[index + 2]?.id ?? null, direction: 'down' })}>
                         ▼
                       </button>
                     </td>
@@ -151,7 +155,7 @@ export default function Prioritization() {
             {moving && (
               <form className="move-form" onSubmit={move}>
                 <span>
-                  Move <strong>{moving.row.title}</strong> to position {moving.position + 1}.
+                  Move <strong>{moving.row.title}</strong> {moving.direction} one place.
                 </span>
                 <input className="input grow" aria-label="Reason for moving" placeholder="Why? e.g. contract commitment" autoFocus value={reason} onChange={(event) => setReason(event.target.value)} />
                 <button className="btn btn-primary" disabled={!reason.trim()}>

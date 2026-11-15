@@ -96,6 +96,8 @@ class RequestVersion(models.Model):
     number = models.PositiveIntegerField()
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     summary = models.CharField(max_length=300)
+    # O que os clientes podem ler desta alteração; vazio = alteração interna da equipa.
+    public_summary = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

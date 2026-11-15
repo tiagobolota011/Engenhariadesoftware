@@ -39,6 +39,7 @@ def row(item) -> dict:
         "key": item.key,
         "title": item.title,
         "category": item.category.name,
+        "category_id": item.category_id,
         "votes": item.vote_count,
         "impact": impact,
         "effort": effort,

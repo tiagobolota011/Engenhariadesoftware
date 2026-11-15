@@ -7,6 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.api import payload
 from apps.core.permissions import IsMember, membership_of
 
 
@@ -43,10 +44,11 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
+        data = payload(request)
         user = authenticate(
             request,
-            username=str(request.data.get("username", "")),
-            password=str(request.data.get("password", "")),
+            username=str(data.get("username", "")),
+            password=str(data.get("password", "")),
         )
         if user is None:
             return Response(

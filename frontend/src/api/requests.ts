@@ -53,6 +53,9 @@ export const addComment = (id: number, body: string) =>
 export const markDecision = (id: number, commentId: number) =>
   api<Comment>(`/api/requests/${id}/comments/${commentId}/decision/`, { method: 'POST' })
 
+export const removeDecision = (id: number, commentId: number) =>
+  api<Comment>(`/api/requests/${id}/comments/${commentId}/decision/`, { method: 'DELETE' })
+
 export type AssessmentInput = {
   version: number
   impact: number | null

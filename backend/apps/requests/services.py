@@ -40,7 +40,7 @@ def lock_request(user, pk) -> FeatureRequest:
 
 
 def normalise_tags(raw) -> list[str]:
-    names = {str(t).strip().lstrip("#").strip().lower()[:30] for t in raw or []}
+    names = {str(t).replace("\x00", "").strip().lstrip("#").strip().lower()[:30] for t in raw or []}
     return sorted(n for n in names if n)
 
 
@@ -61,14 +61,27 @@ def create_request(*, author, title, description, category, tags, importance="")
         Tag.objects.get_or_create(workspace=workspace, name=name)[0]
         for name in normalise_tags(tags)
     )
-    RequestVersion.objects.create(request=item, number=1, actor=author, summary="Request created")
+    RequestVersion.objects.create(
+        request=item,
+        number=1,
+        actor=author,
+        summary="Request created",
+        public_summary="Request created",
+    )
     return item
 
 
-def bump_version(item: FeatureRequest, actor, summary: str) -> None:
-    """Regista uma alteração: nova versão e linha de histórico."""
+def bump_version(item: FeatureRequest, actor, summary: str, public: str = "") -> None:
+    """Regista uma alteração: nova versão e linha de histórico.
+
+    `public` é o que os clientes veem; por omissão a alteração é interna.
+    """
     item.version += 1
     item.save(update_fields=["version", "updated_at"])
     RequestVersion.objects.create(
-        request=item, number=item.version, actor=actor, summary=summary[:300]
+        request=item,
+        number=item.version,
+        actor=actor,
+        summary=summary[:300],
+        public_summary=public[:300],
     )

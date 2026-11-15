@@ -63,6 +63,7 @@ export type PriorityRow = {
   key: string
   title: string
   category: string
+  category_id: number
   votes: number
   impact: number | null
   effort: number | null

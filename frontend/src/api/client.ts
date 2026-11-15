@@ -56,6 +56,11 @@ export async function api<T>(path: string, { method = 'GET', body }: Options = {
   return data as T
 }
 
+/**
+ * Mensagem a mostrar: a da API só nos erros que ela escreve para o utilizador
+ * (400, 409, 412). Nos restantes (403, 5xx) usa-se o texto do próprio ecrã.
+ */
 export function messageOf(error: unknown, fallback: string): string {
-  return error instanceof ApiError && typeof error.data.detail === 'string' ? error.message : fallback
+  const ours = error instanceof ApiError && [400, 409, 412].includes(error.status)
+  return ours && typeof error.data.detail === 'string' ? error.message : fallback
 }

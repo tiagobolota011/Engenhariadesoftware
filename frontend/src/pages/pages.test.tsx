@@ -198,6 +198,46 @@ describe('Request detail', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('changed by someone else')
   })
 
+  it('lets the product owner move or remove the decision', async () => {
+    const decided = detail({
+      assessment: { impact: null, effort: null },
+      can_assess: true,
+      comments: [
+        { id: 1, author_name: 'Mariana Costa', author_role: 'Customer', body: 'Card.', is_decision: true, created_at: '2026-10-09T09:00:00+00:00' },
+        { id: 2, author_name: 'Mariana Costa', author_role: 'Customer', body: 'Cash.', is_decision: false, created_at: '2026-10-10T09:00:00+00:00' },
+      ],
+    })
+    const api = mockApi({
+      'GET /api/requests/42/': { body: decided },
+      'DELETE /api/requests/42/comments/1/decision/': { body: {} },
+      'POST /api/requests/42/comments/2/decision/': { body: {} },
+    })
+    renderAt('/requests/42', rui)
+    expect(await screen.findAllByRole('button', { name: 'Mark as decision' })).toHaveLength(1)
+    await userEvent.click(screen.getByRole('button', { name: 'Remove decision' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Mark as decision' }))
+    expect(api.count('DELETE /api/requests/42/comments/1/decision/')).toBe(1)
+    expect(api.count('POST /api/requests/42/comments/2/decision/')).toBe(1)
+  })
+
+  it('reloads the request after a version conflict', async () => {
+    const po = detail({ assessment: { impact: 3, effort: 2 }, can_assess: true })
+    const api = mockApi({
+      'GET /api/requests/42/': { body: po },
+      'PATCH /api/requests/42/assessment/': { status: 412, body: { detail: 'This request was changed by someone else. Reload and try again.', version: 3 } },
+    })
+    renderAt('/requests/42', rui)
+    await userEvent.click(await screen.findByRole('button', { name: 'Save assessment' }))
+    await screen.findByRole('alert')
+    expect(api.count('GET /api/requests/42/')).toBe(2)
+  })
+
+  it('shows its own message, not the server text, when access is refused', async () => {
+    mockApi({ 'GET /api/requests/42/': { status: 403, body: { detail: 'Você não tem permissão para executar essa ação.' } } })
+    renderAt('/requests/42')
+    expect(await screen.findByRole('alert')).toHaveTextContent('This request could not be loaded.')
+  })
+
   it('posts a comment', async () => {
     const api = mockApi({
       'GET /api/requests/42/': { body: detail() },
@@ -274,10 +314,25 @@ describe('Prioritization', () => {
     await userEvent.type(screen.getByLabelText('Reason for moving'), 'Legal deadline')
     await userEvent.click(screen.getByRole('button', { name: 'Move' }))
     await screen.findByText('Schedule an order in advance', { selector: 'a' })
+    // Subir uma posição = ficar antes do pedido que estava por cima.
     expect(api.calls.find((c) => c.key === 'POST /api/prioritization/reorder/')?.body).toEqual({
       request: 3,
-      position: 1,
+      before: 2,
       reason: 'Legal deadline',
+    })
+  })
+
+  it('moves the last-but-one row down to the end', async () => {
+    const api = mockApi({ ...routes, 'POST /api/prioritization/reorder/': { body: { id: 2, position: 2 } } })
+    renderAt('/prioritization', rui)
+    await userEvent.click(await screen.findByRole('button', { name: 'Move Recurring weekly orders down' }))
+    await userEvent.type(screen.getByLabelText('Reason for moving'), 'Deferred')
+    await userEvent.click(screen.getByRole('button', { name: 'Move' }))
+    await screen.findByText('Schedule an order in advance', { selector: 'a' })
+    expect(api.calls.find((c) => c.key === 'POST /api/prioritization/reorder/')?.body).toEqual({
+      request: 2,
+      before: null,
+      reason: 'Deferred',
     })
   })
 

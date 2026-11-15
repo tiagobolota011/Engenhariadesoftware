@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.collaboration.models import Comment
+from apps.core.api import payload, text
 from apps.core.permissions import IsProductOwner
 from apps.requests import serializers
 from apps.requests.services import bump_version, get_request, lock_request
@@ -13,8 +14,9 @@ from apps.requests.services import bump_version, get_request, lock_request
 
 class CommentCreateView(APIView):
     def post(self, request: Request, pk: int) -> Response:
+        data = payload(request)
         item = get_request(request.user, pk)
-        body = str(request.data.get("body") or "").strip()
+        body = text(data.get("body"))
         if not body:
             return Response(
                 {"body": ["Write a comment first."]}, status=status.HTTP_400_BAD_REQUEST
@@ -24,7 +26,10 @@ class CommentCreateView(APIView):
 
 
 class DecisionView(APIView):
-    """O PO marca um comentário como a decisão do pedido (no máximo uma)."""
+    """O PO marca (POST) ou retira (DELETE) a decisão de um pedido.
+
+    Há no máximo uma decisão por pedido: marcar outro comentário move-a.
+    """
 
     permission_classes = [IsProductOwner]
 
@@ -32,12 +37,20 @@ class DecisionView(APIView):
     def post(self, request: Request, pk: int, comment_id: int) -> Response:
         item = lock_request(request.user, pk)
         target = get_object_or_404(Comment, pk=comment_id, request=item)
-        if item.comments.filter(is_decision=True).exclude(pk=target.pk).exists():
-            return Response(
-                {"detail": "This request already has a decision."}, status=status.HTTP_409_CONFLICT
-            )
         if not target.is_decision:
+            moved = item.comments.filter(is_decision=True).update(is_decision=False)
             target.is_decision = True
             target.save(update_fields=["is_decision"])
-            bump_version(item, request.user, "Decision recorded")
+            summary = "Decision changed" if moved else "Decision recorded"
+            bump_version(item, request.user, summary, public=summary)
+        return Response(serializers.comment(target))
+
+    @transaction.atomic
+    def delete(self, request: Request, pk: int, comment_id: int) -> Response:
+        item = lock_request(request.user, pk)
+        target = get_object_or_404(Comment, pk=comment_id, request=item)
+        if target.is_decision:
+            target.is_decision = False
+            target.save(update_fields=["is_decision"])
+            bump_version(item, request.user, "Decision removed", public="Decision removed")
         return Response(serializers.comment(target))
