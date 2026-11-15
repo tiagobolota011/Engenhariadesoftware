@@ -5,8 +5,10 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.collaboration.models import Membership, Role, Workspace
+from apps.requests.models import Category
 
 WORKSPACE = "FeatureHub Demo"
+CATEGORIES = ["Account", "Catalog", "Interface", "Ordering", "Payments"]
 PERSONAS = [
     ("mariana", "Mariana", "Costa", Role.CUSTOMER),
     ("pedro", "Pedro", "Nunes", Role.CUSTOMER),
@@ -43,4 +45,6 @@ class Command(BaseCommand):
         )
 
     def seed_extra(self, workspace) -> None:
-        """Dados de referência dos módulos (categorias, etc.)."""
+        """Dados de referência: as categorias dos wireframes. Não cria pedidos."""
+        for name in CATEGORIES:
+            Category.objects.get_or_create(workspace=workspace, name=name)

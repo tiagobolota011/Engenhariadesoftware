@@ -5,6 +5,11 @@ from rest_framework.test import APIClient
 from apps.collaboration.models import Membership, Role, Workspace
 
 
+@pytest.fixture(autouse=True)
+def fast_passwords(settings):
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+
 @pytest.fixture
 def workspace(db):
     return Workspace.objects.create(name="Acme")
@@ -70,3 +75,27 @@ def pm(make_user):
 @pytest.fixture
 def outsider(make_user, other_workspace):
     return make_user("eve", Role.PRODUCT_OWNER, ws=other_workspace, name="Eve Outside")
+
+
+@pytest.fixture
+def category(workspace):
+    from apps.requests.models import Category
+
+    return Category.objects.create(workspace=workspace, name="Ordering")
+
+
+@pytest.fixture
+def make_request(workspace, category, customer):
+    from apps.requests.services import create_request
+
+    def _make(title="Schedule an order in advance", author=None, tags=("scheduling",), **extra):
+        return create_request(
+            author=author or customer,
+            title=title,
+            description=extra.pop("description", "Choose a delivery date and time."),
+            category=extra.pop("category", category),
+            tags=list(tags),
+            importance=extra.pop("importance", ""),
+        )
+
+    return _make

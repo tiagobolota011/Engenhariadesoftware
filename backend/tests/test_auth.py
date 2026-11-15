@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 
 from apps.collaboration.models import Membership, Role, Workspace
+from apps.requests.models import Category, FeatureRequest
 
 
 def test_me_requires_session(api, db):
@@ -80,3 +81,11 @@ def test_seed_demo_creates_personas_and_is_idempotent():
     }
     assert User.objects.get(username="rui").check_password("featurehub")
     assert User.objects.get(username="rui").get_full_name() == "Rui Almeida"
+    assert list(Category.objects.values_list("name", flat=True)) == [
+        "Account",
+        "Catalog",
+        "Interface",
+        "Ordering",
+        "Payments",
+    ]
+    assert FeatureRequest.objects.count() == 0

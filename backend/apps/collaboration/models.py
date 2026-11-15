@@ -30,3 +30,29 @@ class Membership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} · {self.get_role_display()} · {self.workspace}"
+
+
+class Comment(models.Model):
+    """Comentário na discussão de um pedido; o PO pode marcar um como decisão."""
+
+    request = models.ForeignKey(
+        "feature_requests.FeatureRequest", on_delete=models.CASCADE, related_name="comments"
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="comments"
+    )
+    body = models.TextField()
+    is_decision = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["request"],
+                condition=models.Q(is_decision=True),
+                name="one_decision_per_request",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"comment {self.pk} on {self.request_id}"
