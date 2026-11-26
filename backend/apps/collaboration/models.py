@@ -56,3 +56,49 @@ class Comment(models.Model):
 
     def __str__(self) -> str:
         return f"comment {self.pk} on {self.request_id}"
+
+
+class Mention(models.Model):
+    """Um membro do workspace mencionado (@username) num comentário."""
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="mentions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["comment", "user"], name="mention_unique_user")
+        ]
+
+    def __str__(self) -> str:
+        return f"@{self.user} in comment {self.comment_id}"
+
+
+class NotificationKind(models.TextChoices):
+    MENTION = "mention", "Mention"
+    STATUS = "status", "Status change"
+    DECISION = "decision", "Decision"
+
+
+class Notification(models.Model):
+    """Aviso na aplicação para um utilizador, sempre ligado a um pedido."""
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    request = models.ForeignKey(
+        "feature_requests.FeatureRequest", on_delete=models.CASCADE, related_name="notifications"
+    )
+    kind = models.CharField(max_length=20, choices=NotificationKind.choices)
+    message = models.CharField(max_length=300)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["recipient", "read_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.get_kind_display()} for {self.recipient}: {self.message}"

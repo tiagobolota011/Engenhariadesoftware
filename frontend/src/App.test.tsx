@@ -59,6 +59,12 @@ describe('App', () => {
     expect(nav).not.toHaveTextContent('Backlog')
   })
 
+  it('shows the unread notification count on the bell', async () => {
+    mockApi({ ...base, 'GET /api/auth/me/': { body: rui }, 'GET /api/notifications/unread/': { body: { unread: 3 } } })
+    render(<App />)
+    expect(await screen.findByRole('link', { name: 'Notifications (3 unread)' })).toHaveTextContent('3')
+  })
+
   it('shows the full menu to the product owner', async () => {
     mockApi({ ...base, 'GET /api/auth/me/': { body: rui } })
     render(<App />)
