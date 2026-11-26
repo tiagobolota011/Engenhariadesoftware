@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError, messageOf } from '../api/client'
+import { listMembers } from '../api/notifications'
 import { addComment, getRequest, markDecision, removeDecision, saveAssessment } from '../api/requests'
-import type { RequestDetail as Detail, RequestStatus } from '../api/types'
+import type { RequestDetail as Detail, Member, RequestStatus } from '../api/types'
+import { useUser } from '../auth/AuthContext'
 import Badge from '../components/Badge'
 import VoteButton from '../components/VoteButton'
 import { formatDate } from '../format'
@@ -22,6 +24,27 @@ function steps(status: RequestStatus): string[] {
   return ['Submitted', 'Under review', outcome, 'Planned', 'In progress', 'Released']
 }
 
+// Mesma regra do backend (apps/collaboration/notifications.py).
+const MENTION = /(?<![\w@])@([\w.+-]*\w)/g
+
+/** Destaca as menções a membros do workspace no texto de um comentário. */
+function withMentions(body: string, usernames: Set<string>): ReactNode[] {
+  const parts: ReactNode[] = []
+  let last = 0
+  for (const match of body.matchAll(MENTION)) {
+    if (!usernames.has(match[1].toLowerCase())) continue
+    parts.push(body.slice(last, match.index))
+    parts.push(
+      <span key={match.index} className="mention">
+        {match[0]}
+      </span>,
+    )
+    last = match.index + match[0].length
+  }
+  parts.push(body.slice(last))
+  return parts
+}
+
 /** WF-03 · Request Detail: estados, discussão, avaliação do PO e histórico. */
 export default function RequestDetail() {
   const { id = '' } = useParams()
@@ -34,6 +57,15 @@ export default function RequestDetail() {
   const [status, setStatus] = useState<string>('')
   const [saved, setSaved] = useState('')
   const [saveError, setSaveError] = useState('')
+  const me = useUser()
+  const [members, setMembers] = useState<Member[]>([])
+
+  useEffect(() => {
+    // Sem a lista de membros só se perde a sugestão de menções; o ecrã continua a funcionar.
+    listMembers()
+      .then(setMembers)
+      .catch(() => setMembers([]))
+  }, [])
 
   const show = useCallback((data: Detail) => {
     setItem(data)
@@ -66,6 +98,10 @@ export default function RequestDetail() {
   }
   if (!item) return <p className="muted">Loading request…</p>
 
+  const usernames = new Set(members.map((m) => m.username.toLowerCase()))
+  const teammates = members.filter((m) => m.username !== me.username)
+  const mention = (username: string) =>
+    setText((now) => `${now}${now && !now.endsWith(' ') ? ' ' : ''}@${username} `)
   const current = STEP_OF[item.status]
 
   async function comment(event: FormEvent) {
@@ -180,7 +216,7 @@ export default function RequestDetail() {
                     </button>
                   )}
                 </div>
-                <p>{c.body}</p>
+                <p>{withMentions(c.body, usernames)}</p>
               </div>
             </div>
           ))}
@@ -190,6 +226,22 @@ export default function RequestDetail() {
               Comment
             </button>
           </form>
+          {teammates.length > 0 && (
+            <p className="mention-hint">
+              Mention a teammate with @username to notify them:
+              {teammates.map((m) => (
+                <button
+                  key={m.username}
+                  type="button"
+                  className="link-button"
+                  title={`${m.name} · ${m.role_label}`}
+                  onClick={() => mention(m.username)}
+                >
+                  @{m.username}
+                </button>
+              ))}
+            </p>
+          )}
           {commentError && (
             <p className="banner banner-error" role="alert">
               {commentError}

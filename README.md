@@ -309,6 +309,7 @@ O fluxo principal dos pedidos, com base de dados, API e testes:
 | Request detail: estados, discussão, decisão, avaliação e histórico de versões | WF-03 | todos; a avaliação só o Product Owner altera, e os clientes não a veem |
 | My Requests e Public Roadmap | WF-04 | todos |
 | Prioritization: score, ordem manual com motivo e sugestão calculada | WF-05 | só o Product Owner |
+| Notifications e contador no sino do topo; menções `@username` na discussão (Sprint 5, SCRUM-87) | — | todos |
 
 Regras principais:
 
@@ -317,6 +318,7 @@ Regras principais:
 - **Score = votos × impacto ÷ esforço.** Sem estimativa, o pedido fica no fim da tabela.
 - **Histórico:** cada alteração do Product Owner cria uma versão. Os clientes veem só as mudanças de estado e de decisão; o impacto, o esforço e os motivos de prioridade ficam para a equipa. Uma escrita feita sobre uma versão antiga é recusada (HTTP 412) em vez de apagar o trabalho de outra pessoa.
 - **Isolamento:** cada utilizador só vê os dados do seu workspace.
+- **Menções e notificações (Sprint 5):** escrever `@username` num comentário notifica esse membro do workspace, com ligação direta ao pedido; nomes desconhecidos, de outro workspace ou do próprio autor são ignorados. O autor de um pedido é notificado quando o Product Owner muda o estado ou regista uma decisão. Ninguém é notificado das suas próprias ações. Evidência em `docs/evidencia/sprint5`.
 - **"AI Suggestion":** é uma ordem calculada pela própria aplicação com a regra do score, com a explicação de cada posição. Não liga a nenhum serviço externo de IA.
 
 ### API
@@ -339,12 +341,16 @@ Todas as rotas ficam em `/api/`. Tirando a de saúde, a do token CSRF e o login,
 | `GET /api/prioritization/`, `POST /api/prioritization/reorder/` | Tabela de priorização e ordem manual: coloca um pedido antes de outro (`before`), com motivo (Product Owner) |
 | `GET /api/prioritization/suggestion/`, `POST /api/prioritization/suggestion/accept/` | Sugestão calculada (Product Owner) |
 | `GET /api/roadmap/public/` | Roadmap público: só título e categoria |
+| `GET /api/members/` | Membros do workspace (para sugerir menções) |
+| `GET /api/notifications/` | As 50 notificações mais recentes e o número de não lidas; `unread=1` mostra só as não lidas |
+| `GET /api/notifications/unread/` | Número de notificações por ler |
+| `POST /api/notifications/{id}/read/`, `POST /api/notifications/read-all/` | Marca uma ou todas como lidas |
 
 A página de estado técnico está em http://localhost:5173/status.
 
 ## O que ainda não está implementado
 
-Os ecrãs Backlog, User Stories, Traceability, Roadmap, Dashboard e Notifications aparecem no menu mas mostram "Em desenvolvimento". Também não existem ainda: menções e notificações, o processamento em segundo plano no worker (outbox), a geração de user stories, as métricas, o registo de utilizadores pela interface e a ligação a um fornecedor de IA. Os avisos `check --deploy` sobre HSTS e redirecionamento HTTPS dependem da implantação (SCRUM-62).
+Os ecrãs Backlog, User Stories, Traceability, Roadmap e Dashboard aparecem no menu mas mostram "Em desenvolvimento" (tarefas do Sprint 5: SCRUM-89, SCRUM-91, SCRUM-93 e SCRUM-95). Também não existem ainda: notificações por email (as notificações são só na aplicação), o processamento em segundo plano no worker (outbox), a geração de user stories, as métricas, o registo de utilizadores pela interface e a ligação a um fornecedor de IA. Os avisos `check --deploy` sobre HSTS e redirecionamento HTTPS dependem da implantação (SCRUM-62).
 
 ## Ferramenta de IA
 

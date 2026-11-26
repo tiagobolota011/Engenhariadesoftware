@@ -9,6 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.collaboration.notifications import notify_status_change
 from apps.core.api import payload, text
 from apps.core.permissions import IsProductOwner
 from apps.prioritization.models import Assessment
@@ -189,6 +190,8 @@ class AssessmentView(APIView):
             item.save(update_fields=["status", "updated_at"])
             # Os clientes só veem a mudança de estado; as estimativas são internas.
             bump_version(item, request.user, "; ".join(changes), public=status_change)
+            if status_change:
+                notify_status_change(item, request.user)
         return Response(serializers.detail(get_request(request.user, pk), request.user))
 
 

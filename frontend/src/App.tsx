@@ -5,6 +5,7 @@ import AppShell from './layout/AppShell'
 import ComingSoon from './pages/ComingSoon'
 import Login from './pages/Login'
 import MyRequests from './pages/MyRequests'
+import Notifications from './pages/Notifications'
 import Prioritization from './pages/Prioritization'
 import RequestDetail from './pages/RequestDetail'
 import RequestsList from './pages/RequestsList'
@@ -17,7 +18,6 @@ const PLANNED = [
   ['traceability', 'Traceability'],
   ['roadmap', 'Roadmap'],
   ['dashboard', 'Analytics Dashboard'],
-  ['notifications', 'Notifications'],
 ]
 
 function Screens() {
@@ -31,6 +31,7 @@ function Screens() {
         <Route path="/requests/:id" element={<RequestDetail />} />
         <Route path="/my-requests" element={<MyRequests />} />
         <Route path="/prioritization" element={<Prioritization />} />
+        <Route path="/notifications" element={<Notifications />} />
         {PLANNED.map(([path, title]) => (
           <Route key={path} path={`/${path}`} element={<ComingSoon title={title} />} />
         ))}

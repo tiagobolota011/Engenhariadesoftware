@@ -82,3 +82,20 @@ export type PublicRoadmap = Record<
   'planned' | 'in_progress' | 'released',
   { id: number; title: string; category: string }[]
 >
+
+export type NotificationKind = 'mention' | 'status' | 'decision'
+
+export type AppNotification = {
+  id: number
+  kind: NotificationKind
+  kind_label: string
+  message: string
+  actor_name: string
+  request_id: number
+  read: boolean
+  created_at: string
+}
+
+export type NotificationList = { unread: number; results: AppNotification[] }
+
+export type Member = { username: string; name: string; role_label: string }

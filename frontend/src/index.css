@@ -142,3 +142,20 @@ textarea.input { resize: vertical; }
   .sidebar { width: 160px; }
 }
 .content > .page-title { margin-bottom: 16px; }
+
+/* Notificações e menções (SCRUM-87) */
+.bell { position: relative; }
+.bell-count { position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--strong); color: #fff; font-size: 10px; font-weight: 700; line-height: 18px; text-align: center; }
+.toolbar { display: flex; align-items: center; gap: 16px; margin: 14px 0; flex-wrap: wrap; }
+.toolbar .btn { margin-left: auto; }
+.checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.notification-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius); }
+.notification { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+.notification:last-child { border-bottom: 0; }
+.notification-unread { background: var(--surface-alt); }
+.notification-unread .notification-message { font-weight: 600; }
+.notification-open { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; min-width: 0; border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.notification-open:hover .notification-message { text-decoration: underline; }
+.mention { font-weight: 600; }
+.mention-hint { margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
+.mention-hint .link-button { margin-left: 6px; }
